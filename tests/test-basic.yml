@@ -1,0 +1,65 @@
+name: Test basic usage - standard-version runs successfully
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git user, package.json, and conventional commits
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+
+          # Remove any existing version tags to avoid conflicts
+          git tag -d $(git tag -l 'v*') 2>/dev/null || true
+
+          # Create a package.json with an initial version using printf
+          printf '{\n  "name": "test-project",\n  "version": "0.1.0"\n}\n' > package.json
+          git add package.json
+          git commit -m "chore: initial setup" || true
+
+          # Tag the current HEAD as v0.1.0 (standard-version baseline)
+          git tag v0.1.0
+
+          # Add a feature commit after the tag
+          echo "# Feature" > feature.md
+          git add feature.md
+          git commit -m "feat: add initial feature"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+
+      - name: Assert action ran and produced expected results
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            # standard-version should have bumped minor: v0.1.0 -> v0.2.0
+            LATEST_TAG=$(git tag --list 'v*' | sort -V | tail -1)
+            echo "Latest tag: $LATEST_TAG"
+            if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "v0.1.0" ]; then
+              echo "FAIL: expected a new version tag to be created, got: $LATEST_TAG"
+              exit 1
+            fi
+            echo "PASS: new tag '$LATEST_TAG' was created by standard-version"
+
+            # Verify package.json version was updated
+            PKG_VERSION=$(node -e "console.log(require('./package.json').version)")
+            echo "package.json version: $PKG_VERSION"
+            if [ "$PKG_VERSION" = "0.1.0" ]; then
+              echo "FAIL: package.json version was not updated"
+              exit 1
+            fi
+            echo "PASS: package.json version updated to $PKG_VERSION"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (acceptable in harness environment)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

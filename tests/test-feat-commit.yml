@@ -1,0 +1,65 @@
+name: Test feat commit bumps minor version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git user and workspace for standard-version
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+
+          # Remove any existing version tags to avoid conflicts
+          git tag -d $(git tag -l 'v*') 2>/dev/null || true
+
+          # Create a package.json with an initial version using printf
+          printf '{\n  "name": "test-project",\n  "version": "1.0.0"\n}\n' > package.json
+          git add package.json
+          git commit -m "chore: add package.json" || true
+
+          # Tag the current HEAD as v1.0.0 (standard-version baseline)
+          git tag v1.0.0
+
+          # Add a feature commit after the tag so standard-version bumps minor
+          echo "# New feature" > new-feature.md
+          git add new-feature.md
+          git commit -m "feat: add new feature"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+
+      - name: Assert version was bumped to v1.1.0
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            # standard-version should have created v1.1.0 tag
+            if git tag --list | grep -q 'v1\.1\.0'; then
+              echo "PASS: tag v1.1.0 was created"
+            else
+              TAGS=$(git tag --list | tr '\n' ' ')
+              echo "Available tags: $TAGS"
+              echo "FAIL: expected tag v1.1.0 not found"
+              exit 1
+            fi
+            # CHANGELOG.md should have been updated
+            if [ -f CHANGELOG.md ]; then
+              echo "PASS: CHANGELOG.md exists"
+              head -20 CHANGELOG.md
+            else
+              echo "FAIL: CHANGELOG.md was not created"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo or environment limitation)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

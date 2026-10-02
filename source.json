@@ -1,0 +1,11 @@
+{
+  "owner": "qzb",
+  "repo": "standard-version-action",
+  "version": "v1.0.5",
+  "commit_sha": "a7d1f3c8e81f96976e1af5f6df576a55b4398d2b",
+  "url": "https://github.com/qzb/standard-version-action",
+  "policy_sha": "d636be7e43ef829af6e853da6b3c7566db9f72fe",
+  "test_policy_sha": "843adf9e4b8f85d0c08b27b9d0b09dd094b54702",
+  "test_agent_version": "2",
+  "harden_agent_version": "2"
+}
