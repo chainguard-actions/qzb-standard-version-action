@@ -8,6 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit | Hardening report |
 |---------|-----|-----------------|------------------|
+| v1.0.13 | [`v1.0.13`](https://github.com/chainguard-actions/qzb-standard-version-action/tree/v1.0.13) | [`6f10b03`](https://github.com/qzb/standard-version-action/commit/6f10b03f954471213d1ac206af8410f354801ecb) | [`HARDENING.md`](https://github.com/chainguard-actions/qzb-standard-version-action/blob/v1.0.13/HARDENING.md) |
 | v1.0.5 | [`v1.0.5`](https://github.com/chainguard-actions/qzb-standard-version-action/tree/v1.0.5) | [`a7d1f3c`](https://github.com/qzb/standard-version-action/commit/a7d1f3c8e81f96976e1af5f6df576a55b4398d2b) | [`HARDENING.md`](https://github.com/chainguard-actions/qzb-standard-version-action/blob/v1.0.5/HARDENING.md) |
 
 ## Privacy
