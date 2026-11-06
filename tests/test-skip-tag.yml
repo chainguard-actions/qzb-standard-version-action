@@ -1,0 +1,54 @@
+name: Test skip tag via versionrc
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Prepare repo state
+        id: prep
+        run: |
+          git config user.name "Test Bot"
+          git config user.email "test@example.com"
+          git tag -d v7.7.7 2>/dev/null || true
+          echo "head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cat > .versionrc.json <<'EOF'
+          {
+            "releaseAs": "7.7.7",
+            "skip": { "tag": true }
+          }
+          EOF
+      - id: action
+        uses: .
+      - name: Assert commit created but no tag
+        env:
+          ORIG: ${{ steps.prep.outputs.head }}
+        run: |
+          NEW_HEAD="$(git rev-parse HEAD)"
+          echo "orig: $ORIG new: $NEW_HEAD"
+          if [ "$NEW_HEAD" = "$ORIG" ]; then
+            echo "FAIL: no release commit created"
+            exit 1
+          fi
+          MSG="$(git log -1 --format=%s)"
+          echo "commit msg: $MSG"
+          if ! echo "$MSG" | grep -q "7.7.7"; then
+            echo "FAIL: commit message lacks version"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v7.7.7" >/dev/null; then
+            echo "FAIL: tag created despite skip.tag"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Cleanup
+        if: always()
+        env:
+          ORIG: ${{ steps.prep.outputs.head }}
+        run: |
+          git tag -d v7.7.7 2>/dev/null || true
+          if [ -n "$ORIG" ]; then git reset --hard "$ORIG"; fi
+          rm -f .versionrc.json

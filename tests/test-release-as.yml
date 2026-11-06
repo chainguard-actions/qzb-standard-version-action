@@ -1,0 +1,74 @@
+name: Test release-as via versionrc
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Prepare repo state
+        id: prep
+        run: |
+          git config user.name "Test Bot"
+          git config user.email "test@example.com"
+          git tag -d v9.9.9 2>/dev/null || true
+          echo "head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cat > .versionrc.json <<'EOF'
+          {
+            "releaseAs": "9.9.9"
+          }
+          EOF
+          cat .versionrc.json
+      - id: action
+        uses: .
+      - name: Assert release commit and tag
+        env:
+          ORIG: ${{ steps.prep.outputs.head }}
+        run: |
+          NEW_HEAD="$(git rev-parse HEAD)"
+          echo "orig: $ORIG new: $NEW_HEAD"
+          git log -3 --oneline
+          if [ "$NEW_HEAD" = "$ORIG" ]; then
+            echo "FAIL: no new commit created"
+            exit 1
+          fi
+          MSG="$(git log -1 --format=%s)"
+          echo "commit msg: $MSG"
+          if ! echo "$MSG" | grep -q "chore(release): 9.9.9"; then
+            echo "FAIL: unexpected release commit message"
+            exit 1
+          fi
+          if ! git rev-parse -q --verify "refs/tags/v9.9.9" >/dev/null; then
+            echo "FAIL: tag v9.9.9 not created"
+            exit 1
+          fi
+          TAG_COMMIT="$(git rev-list -n1 v9.9.9)"
+          if [ "$TAG_COMMIT" != "$NEW_HEAD" ]; then
+            echo "FAIL: tag does not point at release commit"
+            exit 1
+          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "package.json version: $VERSION"
+          if [ "$VERSION" != "9.9.9" ]; then
+            echo "FAIL: package.json not bumped"
+            exit 1
+          fi
+          if ! grep -q "9.9.9" CHANGELOG.md; then
+            echo "FAIL: CHANGELOG.md does not mention 9.9.9"
+            exit 1
+          fi
+          if ! git show --name-only --format= HEAD | grep -q "CHANGELOG.md"; then
+            echo "FAIL: CHANGELOG.md not part of release commit"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Cleanup
+        if: always()
+        env:
+          ORIG: ${{ steps.prep.outputs.head }}
+        run: |
+          git tag -d v9.9.9 2>/dev/null || true
+          if [ -n "$ORIG" ]; then git reset --hard "$ORIG"; fi
+          rm -f .versionrc.json

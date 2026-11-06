@@ -1,14 +1,27 @@
-# qzb/standard-version-action
+# Standard Version Action
 
-Calculate new version based on Conventional Commits, update CHANGELOG and create new git tag
+This [Github Action][] calculates the new version based on [Conventional Commits][], updates CHANGELOG, and creates the new git tag. It's powered by [Standard Version][].
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/qzb/standard-version-action](https://github.com/qzb/standard-version-action).
+## Inputs
 
-## Versions
+This action doesn't accept any inputs. If you want to change a configuration, create a [versionrc file][].
 
-| Version | Tag | Upstream commit | Hardening report |
-|---------|-----|-----------------|------------------|
-| v1.0.5 | [`v1.0.5`](https://github.com/chainguard-actions/qzb-standard-version-action/tree/v1.0.5) | [`a7d1f3c`](https://github.com/qzb/standard-version-action/commit/a7d1f3c8e81f96976e1af5f6df576a55b4398d2b) | [`HARDENING.md`](https://github.com/chainguard-actions/qzb-standard-version-action/blob/v1.0.5/HARDENING.md) |
+## Example usage
+
+```yaml
+- uses: actions/checkout@v2
+- name: Configure committer
+  run: |
+    git config user.name "GitHub Actions Bot"
+    git config user.email "<>"
+- name: Bump version
+  uses: qzb/standard-version-action@v1.0.5
+```
+
+[Github Action]: https://docs.github.com/en/actions
+[Conventional Commits]: https://www.conventionalcommits.org/en/v1.0.0/
+[Standard Version]: https://github.com/conventional-changelog/standard-version
+[versionrc file]: https://github.com/conventional-changelog/standard-version#configuration
 
 ## Privacy
 

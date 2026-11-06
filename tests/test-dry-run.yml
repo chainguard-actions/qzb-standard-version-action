@@ -1,0 +1,58 @@
+name: Test dry run via versionrc
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Prepare repo state
+        id: prep
+        run: |
+          git config user.name "Test Bot"
+          git config user.email "test@example.com"
+          echo "head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git tag -l | sort > /tmp/tags-before.txt
+          cp package.json /tmp/package-before.json
+          cat > .versionrc.json <<'EOF'
+          {
+            "dryRun": true,
+            "releaseAs": "8.8.8"
+          }
+          EOF
+      - id: action
+        uses: .
+      - name: Assert nothing changed
+        env:
+          ORIG: ${{ steps.prep.outputs.head }}
+        run: |
+          NEW_HEAD="$(git rev-parse HEAD)"
+          echo "orig: $ORIG new: $NEW_HEAD"
+          if [ "$NEW_HEAD" != "$ORIG" ]; then
+            echo "FAIL: dry run created a commit"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v8.8.8" >/dev/null; then
+            echo "FAIL: dry run created a tag"
+            exit 1
+          fi
+          git tag -l | sort > /tmp/tags-after.txt
+          if ! diff /tmp/tags-before.txt /tmp/tags-after.txt; then
+            echo "FAIL: tag list changed"
+            exit 1
+          fi
+          if ! cmp -s package.json /tmp/package-before.json; then
+            echo "FAIL: package.json modified in dry run"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Cleanup
+        if: always()
+        env:
+          ORIG: ${{ steps.prep.outputs.head }}
+        run: |
+          git tag -d v8.8.8 2>/dev/null || true
+          if [ -n "$ORIG" ]; then git reset --hard "$ORIG"; fi
+          rm -f .versionrc.json
